@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scanner Nota Pencuci</title>
+<style>
+  :root { --bg:#f1f5f9; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --ok:#047857; --okbg:#ecfdf5; --err:#b91c1c; --errbg:#fef2f2; --warn:#92400e; --warnbg:#fffbeb; --biru:#2563eb; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0b1220; --card:#111a2e; --ink:#e2e8f0; --muted:#94a3b8; --line:#1e293b; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: #065f46; color:#fff; padding: 14px 16px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  header b { font-size: 1.05rem; }
+  header small { display:block; opacity:.85; font-size:.8rem; }
+  main { padding: 14px; max-width: 520px; margin: 0 auto; }
+  .kartu { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  label { display:block; font-size:.85rem; font-weight:700; margin: 10px 0 4px; }
+  input[type=text], input[type=password] { width:100%; min-height:48px; border:2px solid var(--line); border-radius:12px; padding:0 12px; font-size:1rem; background: var(--card); color: var(--ink); }
+  input:focus { outline: 3px solid #bfdbfe; border-color: var(--biru); }
+  button { font: inherit; min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; font-weight: 800; cursor: pointer; }
+  .tombol { width:100%; background: var(--biru); color:#fff; margin-top: 10px; }
+  .tombol.gelap { background:#1e293b; }
+  .tombol.polos { background: transparent; color: var(--muted); border: 1px solid var(--line); min-height: 40px; font-size:.85rem; }
+  .baris { display:flex; gap:8px; }
+  .baris > * { flex: 1 1 auto; }
+  .pesan { font-size:.9rem; font-weight:700; min-height: 1.3em; margin: 8px 0 0; color: var(--muted); }
+  .pesan.err { color: var(--err); }
+  .pesan.ok { color: var(--ok); }
+  #vidWrap { position: relative; background:#000; border-radius: 14px; overflow:hidden; aspect-ratio: 4 / 3; }
+  #vid { width:100%; height:100%; object-fit: cover; display:block; }
+  .bidik { position:absolute; left:12%; right:12%; top:38%; height:24%; border: 3px solid #34d399; border-radius: 12px; box-shadow: 0 0 0 999px rgba(0,0,0,.25); pointer-events:none; }
+  .hasil { display:flex; flex-direction:column; gap:8px; }
+  .item { border-radius: 12px; padding: 10px 12px; border: 1px solid var(--line); background: var(--card); }
+  .item.ok { background: var(--okbg); border-color: #6ee7b7; }
+  .item.telat { background: var(--warnbg); border-color: #fcd34d; }
+  .item.err { background: var(--errbg); border-color: #fca5a5; }
+  .item .id { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 800; font-size: .95rem; }
+  .item .ket { font-size: .9rem; font-weight: 700; margin-top: 2px; }
+  .item .jam { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+  .kosong { text-align:center; color: var(--muted); font-size:.9rem; padding: 14px 0; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div><b>Scanner Nota Pencuci</b><small id="hdrNama">Belum login</small></div>
+  <button id="btnKeluar" class="tombol polos hidden" style="width:auto;margin:0;color:#fff;border-color:#34d399;">Keluar</button>
+</header>
+
+<main>
+  <!-- LOGIN -->
+  <section id="sLogin" class="kartu">
+    <b>Login pencuci</b>
+    <div class="pesan">Gunakan akun yang sama dengan aplikasi laundry. Login hanya perlu sekali, sampai sesi berakhir.</div>
+    <form id="fLogin" autocomplete="on">
+      <label for="inUser">Username (kode pencuci)</label>
+      <input id="inUser" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+      <label for="inPass">Password</label>
+      <input id="inPass" type="password" autocomplete="current-password" required>
+      <button class="tombol" id="btnLogin" type="submit">Masuk</button>
+    </form>
+    <div id="pLogin" class="pesan err"></div>
+  </section>
+
+  <!-- SCANNER -->
+  <section id="sScan" class="hidden">
+    <div class="kartu">
+      <div class="baris">
+        <button class="tombol" id="btnKamera" type="button">Mulai kamera</button>
+        <button class="tombol gelap hidden" id="btnStop" type="button">Berhenti</button>
+      </div>
+      <div id="vidWrap" class="hidden" style="margin-top:12px;">
+        <video id="vid" playsinline muted autoplay></video>
+        <div class="bidik"></div>
+      </div>
+      <div id="pStatus" class="pesan">Tekan Mulai kamera, lalu arahkan ke barcode nota di tas.</div>
+
+      <form id="fManual" style="margin-top:10px;">
+        <label for="inManual">Barcode tidak terbaca? Ketik nomor nota</label>
+        <div class="baris">
+          <input id="inManual" type="text" placeholder="TRX-..." autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="tombol gelap" type="submit" style="flex:0 0 auto;width:auto;margin-top:0;">Kirim</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="kartu">
+      <div class="baris" style="justify-content:space-between;align-items:center;">
+        <b>Hasil scan</b>
+        <button class="tombol polos" id="btnKosong" type="button" style="width:auto;">Bersihkan</button>
+      </div>
+      <div id="hasil" class="hasil" style="margin-top:10px;"><div class="kosong">Belum ada scan.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  // Alamat API di Apps Script (deployment "Deploy > New version"). Ganti sebelum dipakai.
+  const API_URL = 'https://script.google.com/macros/s/GANTI-ID-DEPLOYMENT/exec';
+  const KUNCI = 'laundry_scanner_sesi_v1';
+  const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+
+  const $ = id => document.getElementById(id);
+  let sesi = null, stream = null, kamAktif = false, sibuk = false, zx = null, lastKode = '', kanvas = null, kctx = null, reader = null;
+
+  // ---------- Panggilan ke Apps Script (JSONP: tidak butuh CORS, tidak butuh izin kamera) ----------
+  function panggil(params) {
+    return new Promise((resolve, reject) => {
+      const nama = 'cb' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const s = document.createElement('script');
+      const timer = setTimeout(() => { bersih(); reject(new Error('timeout')); }, 20000);
+      function bersih() { clearTimeout(timer); delete window[nama]; s.remove(); }
+      window[nama] = data => { bersih(); resolve(data); };
+      const q = new URLSearchParams(Object.assign({}, params, { api: '1', callback: nama }));
+      s.src = API_URL + '?' + q.toString();
+      s.onerror = () => { bersih(); reject(new Error('jaringan')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  // ---------- Penyimpanan sesi di perangkat ----------
+  function simpanSesi(d) { try { localStorage.setItem(KUNCI, JSON.stringify(d)); } catch (e) {} }
+  function bacaSesi() { try { return JSON.parse(localStorage.getItem(KUNCI) || 'null'); } catch (e) { return null; } }
+  function hapusSesi() { try { localStorage.removeItem(KUNCI); } catch (e) {} }
+
+  // ---------- Tampilan ----------
+  function tampilLogin(pesan) {
+    sesi = null; hentikanKamera();
+    $('sScan').classList.add('hidden'); $('sLogin').classList.remove('hidden');
+    $('btnKeluar').classList.add('hidden'); $('hdrNama').textContent = 'Belum login';
+    $('pLogin').textContent = pesan || ''; $('pLogin').className = 'pesan err';
+  }
+  function tampilScanner() {
+    $('sLogin').classList.add('hidden'); $('sScan').classList.remove('hidden');
+    $('btnKeluar').classList.remove('hidden');
+    $('hdrNama').textContent = sesi.nama + ' · Kode ' + sesi.username;
+  }
+  function status(t, jenis) { $('pStatus').textContent = t; $('pStatus').className = 'pesan ' + (jenis || ''); }
+
+  function tambahHasil(kode, r) {
+    const kosong = document.querySelector('#hasil .kosong'); if (kosong) kosong.remove();
+    let jenis = 'err';
+    if (r.success) jenis = r.terlambat ? 'telat' : 'ok';
+    const el = document.createElement('div');
+    el.className = 'item ' + jenis;
+    const jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    el.innerHTML = '<div class="id"></div><div class="ket"></div><div class="jam"></div>';
+    el.querySelector('.id').textContent = r.id || kode;
+    el.querySelector('.ket').textContent = r.message || 'Tidak ada balasan.';
+    el.querySelector('.jam').textContent = jam;
+    $('hasil').prepend(el);
+    while ($('hasil').children.length > 30) $('hasil').lastElementChild.remove();
+    if (r.success && navigator.vibrate) navigator.vibrate(r.terlambat ? [120, 80, 120] : 80);
+    status(r.success ? (r.message + ': ' + (r.id || kode)) : (r.message || 'Gagal.'), r.success ? 'ok' : 'err');
+  }
+
+  // ---------- Login ----------
+  $('fLogin').addEventListener('submit', async e => {
+    e.preventDefault();
+    const u = $('inUser').value.trim(), p = $('inPass').value;
+    if (!u || !p) { $('pLogin').textContent = 'Isi username dan password.'; return; }
+    $('btnLogin').disabled = true; $('pLogin').textContent = 'Memeriksa...'; $('pLogin').className = 'pesan';
+    try {
+      const r = await panggil({ aksi: 'login', u: u, p: p });
+      if (!r.success) { $('pLogin').textContent = r.message || 'Login gagal.'; $('pLogin').className = 'pesan err'; return; }
+      sesi = { token: r.user.token, username: r.user.username, nama: r.user.nama, simpan: Date.now() };
+      simpanSesi(sesi);
+      $('inPass').value = '';
+      tampilScanner();
+    } catch (err) {
+      $('pLogin').textContent = 'Tidak bisa terhubung ke server. Periksa internet, lalu coba lagi.'; $('pLogin').className = 'pesan err';
+    } finally { $('btnLogin').disabled = false; }
+  });
+
+  $('btnKeluar').addEventListener('click', () => { hapusSesi(); tampilLogin('Anda sudah keluar.'); });
+
+  // ---------- Kamera ----------
+  function muatPemindai() {
+    if (window.ZXing) return Promise.resolve(window.ZXing);
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = ZXING_URL;
+      s.onload = () => window.ZXing ? res(window.ZXing) : rej(new Error('pustaka'));
+      s.onerror = () => rej(new Error('pustaka'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function pesanKameraGagal(e) {
+    const nama = (e && e.name) || '';
+    if (e && e.message === 'pustaka') return 'Pemindai tidak bisa dimuat. Periksa koneksi internet.';
+    if (nama === 'NotAllowedError' || nama === 'SecurityError') return 'Kamera diblokir. Ketuk ikon gembok di alamat browser, pilih Izin > Kamera > Izinkan, lalu tekan Mulai kamera lagi.';
+    if (nama === 'NotFoundError' || nama === 'OverconstrainedError') return 'Kamera tidak ditemukan di perangkat ini. Ketik nomor nota.';
+    if (nama === 'NotReadableError') return 'Kamera sedang dipakai aplikasi lain. Tutup aplikasi kamera, lalu coba lagi.';
+    return 'Kamera tidak bisa dibuka (' + (nama || 'error') + '). Ketik nomor nota.';
+  }
+
+  async function mulaiKamera() {
+    if (kamAktif) return;
+    status('Membuka kamera...');
+    try {
+      zx = await muatPemindai();
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('x'), { name: 'NotSupportedError' });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      const v = $('vid');
+      v.srcObject = stream;
+      await v.play();
+      const hints = new Map();
+      hints.set(zx.DecodeHintType.POSSIBLE_FORMATS, [zx.BarcodeFormat.CODE_128]);
+      hints.set(zx.DecodeHintType.TRY_HARDER, true);
+      reader = new zx.BrowserMultiFormatReader(hints);
+      kanvas = document.createElement('canvas');
+      kctx = kanvas.getContext('2d', { willReadFrequently: true });
+      kamAktif = true;
+      $('vidWrap').classList.remove('hidden'); $('btnKamera').classList.add('hidden'); $('btnStop').classList.remove('hidden');
+      status('Arahkan kamera ke barcode nota. Scan berikutnya bisa langsung dilakukan.');
+      loopBaca();
+    } catch (e) {
+      hentikanKamera();
+      status(pesanKameraGagal(e), 'err');
+    }
+  }
+
+  function hentikanKamera() {
+    kamAktif = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    const v = $('vid'); if (v) v.srcObject = null;
+    if ($('vidWrap')) $('vidWrap').classList.add('hidden');
+    if ($('btnKamera')) $('btnKamera').classList.remove('hidden');
+    if ($('btnStop')) $('btnStop').classList.add('hidden');
+  }
+
+  // Baca setiap frame video dengan ZXing (gambar ke kanvas, lalu decodeBitmap).
+  async function loopBaca() {
+    while (kamAktif) {
+      const v = $('vid');
+      if (!sibuk && v.readyState >= 2 && v.videoWidth) {
+        if (kanvas.width !== v.videoWidth) { kanvas.width = v.videoWidth; kanvas.height = v.videoHeight; }
+        kctx.drawImage(v, 0, 0, kanvas.width, kanvas.height);
+        try {
+          const bitmap = new zx.BinaryBitmap(new zx.HybridBinarizer(new zx.HTMLCanvasElementLuminanceSource(kanvas)));
+          const kode = reader.decodeBitmap(bitmap).getText();
+          // Satu barcode hanya diproses sekali selama masih terlihat kamera. Scan ulang: jauhkan dulu dari kamera.
+          if (kode !== lastKode) {
+            lastKode = kode;
+            prosesKode(kode);
+          }
+        } catch (e) {
+          lastKode = ''; // tidak ada barcode di frame ini: barcode berikutnya boleh diproses
+        }
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
+  // ---------- Proses satu nota ----------
+  async function prosesKode(kode) {
+    if (!sesi) return;
+    sibuk = true;
+    status('Memproses ' + kode + ' ...');
+    try {
+      const r = await panggil({ aksi: 'scan', t: sesi.token, n: kode });
+      if (r.sesiHabis) {
+        tampilLogin('Sesi berakhir. Silakan login lagi.');
+        hapusSesi();
+        return;
+      }
+      tambahHasil(kode, r);
+    } catch (e) {
+      tambahHasil(kode, { success: false, id: kode, message: 'Tidak bisa terhubung ke server. Scan lagi.' });
+    } finally {
+      sibuk = false;
+    }
+  }
+
+  $('btnKamera').addEventListener('click', mulaiKamera);
+  $('btnStop').addEventListener('click', () => { hentikanKamera(); status('Kamera dihentikan.'); });
+  $('fManual').addEventListener('submit', e => {
+    e.preventDefault();
+    const kode = $('inManual').value.trim().toUpperCase();
+    if (!kode) return;
+    $('inManual').value = '';
+    prosesKode(kode);
+  });
+  $('btnKosong').addEventListener('click', () => { $('hasil').innerHTML = '<div class="kosong">Belum ada scan.</div>'; });
+
+  // ---------- Mulai: pulihkan sesi bila masih berlaku ----------
+  (async function mulai() {
+    const tersimpan = bacaSesi();
+    if (!tersimpan || !tersimpan.token) return tampilLogin('');
+    try {
+      const r = await panggil({ aksi: 'pulihkan', t: tersimpan.token });
+      if (!r.success || (r.user && r.user.role !== 'Pencuci')) { hapusSesi(); return tampilLogin(r.message || 'Silakan login.'); }
+      sesi = { token: r.user.token, username: r.user.username, nama: r.user.nama, simpan: Date.now() };
+      simpanSesi(sesi);
+      tampilScanner();
+    } catch (e) {
+      tampilLogin('Tidak bisa terhubung ke server. Coba lagi.');
+    }
+  })();
+})();
+</script>
+</body>
+</html>
