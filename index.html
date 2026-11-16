@@ -97,7 +97,7 @@
 <script>
 (function () {
   // Alamat API di Apps Script (deployment "Deploy > New version"). Ganti sebelum dipakai.
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwpwd7fCgb49Xy-SpX4dC1mNSNMCNcZIq-8AUZeMHzKebYPG0feDqI1m7N-K4p9suLj/exec';
+  const API_URL = 'https://script.google.com/macros/s/GANTI-ID-DEPLOYMENT/exec';
   const KUNCI = 'laundry_scanner_sesi_v1';
   const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
 
@@ -202,7 +202,15 @@
     try {
       zx = await muatPemindai();
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('x'), { name: 'NotSupportedError' });
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      // Minta resolusi tinggi. Tanpa ini, kamera sering hanya memberi 640x480 dan barcode terlalu kecil untuk dibaca.
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 }, height: { ideal: 1080 },
+          advanced: [{ focusMode: 'continuous' }]
+        },
+        audio: false
+      });
       const v = $('vid');
       v.srcObject = stream;
       await v.play();
@@ -214,7 +222,12 @@
       kctx = kanvas.getContext('2d', { willReadFrequently: true });
       kamAktif = true;
       $('vidWrap').classList.remove('hidden'); $('btnKamera').classList.add('hidden'); $('btnStop').classList.remove('hidden');
-      status('Arahkan kamera ke barcode nota. Scan berikutnya bisa langsung dilakukan.');
+      const lebar = v.videoWidth, tinggi = v.videoHeight;
+      if (lebar < 1280) {
+        status('Kamera hanya ' + lebar + 'x' + tinggi + '. Dekatkan nota ke kamera supaya barcode besar. Bila tetap tidak terbaca, ketik nomor nota.', 'err');
+      } else {
+        status('Kamera siap (' + lebar + 'x' + tinggi + '). Dekatkan barcode sampai memenuhi setengah layar, lalu tahan sebentar.');
+      }
       loopBaca();
     } catch (e) {
       hentikanKamera();
